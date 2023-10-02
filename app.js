@@ -49,7 +49,6 @@ app.listen(port, () => {
 /// login post api
 
 app.post('/api/login',(req,res) =>{
-  console.log(req.body);
   const { email, password } = req?.body;
   const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
   connection.query(sql, [email, password], (err, results) => {
@@ -69,3 +68,23 @@ app.post('/api/login',(req,res) =>{
     }
 })
 });
+
+app.post('/api/signup', (req, res) => {
+  const { firstName, lastName, phone, email, password } = req.body;
+  const sql = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
+  connection.query(sql, [firstName, lastName, phone, email, password], (err, results) => {
+    if (err) {
+      console.error('Error querying data:', err);
+      res.status(500).json({ error: 'Internal server error' });
+      return;
+    }
+
+    // Check if the INSERT was successful (no error)
+    if (!err) {
+      res.json({ message: 'signup successful' });
+    } else {
+      res.status(401).json({ error: 'error in signing up' });
+    }
+  });
+});
+
