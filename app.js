@@ -71,20 +71,41 @@ app.post('/api/login',(req,res) =>{
 
 app.post('/api/signup', (req, res) => {
   const { firstName, lastName, phone, email, password } = req.body;
-  const sql = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
-  connection.query(sql, [firstName, lastName, phone, email, password], (err, results) => {
+  const sql_check = 'SELECT * FROM users WHERE email = ?';
+
+  // Check if a user with the same email already exists
+  connection.query(sql_check, [email], (err, results) => {
     if (err) {
       console.error('Error querying data:', err);
       res.status(500).json({ error: 'Internal server error' });
       return;
     }
 
-    // Check if the INSERT was successful (no error)
-    if (!err) {
-      res.json({ message: 'signup successful' });
+    if (results.length > 0) {
+      // User with the same email already exists
+      res.status(409).json({ error: 'User already exists' });
     } else {
-      res.status(401).json({ error: 'error in signing up' });
+      // User does not exist, proceed with registration
+      const sql = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
+
+      // Hash the password securely before storing it in the database (use a password hashing library like bcrypt)
+      // For now, we assume 'password' is stored securely
+      connection.query(sql, [firstName, lastName, phone, email, password], (err, results) => {
+        if (err) {
+          console.error('Error querying data:', err);
+          res.status(500).json({ error: 'Internal server error' });
+          return;
+        }
+
+        // Check if the INSERT was successful (no error)
+        if (!err) {
+          res.json({ message: 'Signup successful' });
+        } else {
+          res.status(500).json({ error: 'Error in signing up' });
+        }
+      });
     }
   });
 });
+
 
