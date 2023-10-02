@@ -1,8 +1,11 @@
 const express = require('express');
 const mysql = require('mysql2');
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
+app.use(cors());
+app.use(express.json());
 
 // Create a MySQL connection
 const connection = mysql.createConnection({
@@ -41,4 +44,28 @@ app.get('/api/users', (req, res) => {
 // Start the Express server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+});
+
+/// login post api
+
+app.post('/api/login',(req,res) =>{
+  console.log(req.body);
+  const { email, password } = req?.body;
+  const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
+  connection.query(sql, [email, password], (err, results) => {
+    if (err) {
+      console.error('Error querying data:', err);
+      console.log(req.body)
+      res.status(500).json({ error: 'Internal server error' });
+      return;
+    }
+
+    if (results.length === 1) {
+      // User found and password matches
+      res.json({ message: 'Login successful' });
+    } else {
+      // User not found or password doesn't match
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
+})
 });
