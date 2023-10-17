@@ -9,6 +9,7 @@ const app = express();
 const port = 3000;
 app.use(cors());
 app.use(express.json());
+const crypto = require('crypto');
 
 const saltRounds = 10;
 
@@ -31,19 +32,31 @@ connection.connect((err) => {
 
 // Define an API endpoint to retrieve user data
 app.get('/api/users', (req, res) => {
-  const sql = 'SELECT * FROM users'; // Replace 'your_table' with your table name
+  const user_id = req.query.user_id;
+  if (!user_id) {
+    // Handle the case where user_id is missing
+    res.status(400).json({ error: 'user_id parameter is required' });
+    return;
+  }
 
-  // Execute the SQL query
-  connection.query(sql, (err, results) => {
+  // Modify the SQL query to retrieve user details for the specified user_id
+  const sql = 'SELECT * FROM users WHERE user_id = ?';
+
+  // Execute the SQL query with the user_id parameter
+  connection.query(sql, [user_id], (err, results) => {
     if (err) {
       console.error('Error querying data:', err);
       res.status(500).json({ error: 'Internal server error' });
       return;
     }
-
-    // Send the query results as a JSON response
-    res.json(results);
-  });
+    if (results.length === 0) {
+      // Handle the case where no user with the specified user_id is found
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      // Send the query results as a JSON response
+      res.json(results[0]); // Assuming you expect only one user to match the user_id
+    }
+});
 });
 
 // Start the Express server
@@ -56,7 +69,7 @@ app.listen(port, () => {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
+    console.log("here login")
     // Retrieve the user from the database by email
     connection.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
       if (err) {
@@ -67,13 +80,12 @@ app.post('/api/login', async (req, res) => {
 
       if (results.length === 1) {
         const user = results[0];
-        const passwordMatch = await bcrypt.compare(password, user.password);
-
-        if (passwordMatch) {
-          // Generate a JWT token for authentication
+        
+        // Compare the submitted password with the stored password
+        if (password === user.password) {
+          // Passwords match, generate a JWT token for authentication
           const token = jwt.sign({ userId: user.id }, 'your-secret-key', { expiresIn: '1h' });
-
-          res.json({ message: 'Login successful', token });
+          res.json({ message: 'Login successful', token, user_id:user.user_id });
         } else {
           res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -87,8 +99,10 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+
+
 app.post('/api/signup', async (req, res) => {
-  const { firstName, lastName, phone, email, password } = req.body;
+  const { first_name, last_name, phone, email, password } = req.body;
   const sql_check = 'SELECT * FROM users WHERE email = ?';
 
   try {
@@ -109,12 +123,11 @@ app.post('/api/signup', async (req, res) => {
     }
 
     // User does not exist, proceed with registration
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const sql = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
 
-    // Insert the user data into the database
+    // Insert the user data, including the plain password, into the database
+    const sql = 'INSERT INTO users (first_name, last_name, phone, email, password) VALUES (?, ?, ?, ?, ?)';
     const insertResult = await new Promise((resolve, reject) => {
-      connection.query(sql, [firstName, lastName, phone, email, hashedPassword], (err, results) => {
+      connection.query(sql, [first_name, last_name, phone, email, password], (err, results) => {
         if (err) {
           reject(err);
         } else {
@@ -135,6 +148,7 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
+
 // user details api
 
 app.post('/api/details', (req, res) => {
@@ -152,3 +166,36 @@ app.post('/api/details', (req, res) => {
   });
 });
 
+// Define an API endpoint to retrieve user deatils
+app.get('/api/userdetails', (req, res) => {
+  // Extract the user_id from the query parameters
+  const user_id = req.query.user_id;
+  console.log("hello")
+  if (!user_id) {
+    // Handle the case where user_id is missing
+    res.status(400).json({ error: 'user_id parameter is required' });
+    return;
+  }
+
+  // Modify the SQL query to retrieve user details and user's first name and last name
+  const sql = 'SELECT user_details.*, users.first_name, users.last_name ' +
+              'FROM user_details ' +
+              'JOIN users ON user_details.user_id = users.user_id ' +
+              'WHERE user_details.user_id = ?';
+
+  // Execute the SQL query with the user_id parameter
+  connection.query(sql, [user_id], (err, results) => {
+    if (err) {
+      console.error('Error querying data:', err);
+      res.status(500).json({ error: 'Internal server error' });
+      return;
+    }
+    if (results.length === 0) {
+      // Handle the case where no user with the specified user_id is found
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      // Send the query results as a JSON response
+      res.json(results[0]); // Assuming you expect only one user to match the user_id
+    }
+  });
+});
