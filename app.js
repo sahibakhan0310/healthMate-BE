@@ -4,6 +4,7 @@ const cors = require('cors');
 //const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const port=3000
@@ -154,6 +155,7 @@ app.post('/api/signup', async (req, res) => {
       });
 console.log("here",userDetails)
       // Return user details in the response
+      sendWelcomeEmail(email, firstName);
       res.json({ message: 'Signup successful', user: userDetails });
     } else {
       res.status(500).json({ error: 'Error in signing up' });
@@ -389,3 +391,28 @@ app.post('/api/add_water_intake', (req, res) => {
 //   });
 // }
 
+
+function sendWelcomeEmail(email, firstName) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'healthmatefitapp@gmail.com', // your Gmail email address
+      pass: 'rpmv uzuo ndcd jpnh', // your Gmail password
+    },
+  });
+
+  const mailOptions = {
+    from: 'healthmatefitapp@gmail.com',
+    to: email,
+    subject: 'Welcome to Healthmate!',
+    text: `Dear ${firstName},\n\nWelcome to HealthMate! We're excited to have you on board.`,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Error sending welcome email:', error);
+    } else {
+      console.log('Welcome email sent:', info.response);
+    }
+  });
+}
